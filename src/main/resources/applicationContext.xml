@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:spring="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-2.5.xsd http://www.springframework.org/schema/mvc https://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+
+    <!--扫描base-package包或者子包下所有的Java类，并把匹配的Java类注册成Bean。这里设置扫描 com.ay 包下的所有Java类 -->
+    <context:component-scan base-package="com.ay"/>
+
+    <!--    1、配置数据库相关参数-->
+    <!--    <context:property-placeholder location="classpath:jdbc.properties"  ignore-unresolvable="true"/>-->
+    <context:property-placeholder location="classpath:jdbc.properties" ignore-unresolvable="true"/>
+
+    <!--    2、数据源-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+          init-method="init" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driverClassName}"/>
+
+
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--    3、配置 SqlSessionFactory 对象-->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+
+        <!--        注入数据库连接池-->
+        <property name="dataSource" ref="dataSource"/>
+
+        <!--        扫描sql配置文件：mapper 需要的xml文件-->
+        <property name="mapperLocations" value="classpath:mapper/*.xml"/>
+
+        <!--        配置分页插件-->
+        <property name="plugins">
+            <array>
+                <bean class="com.github.pagehelper.PageInterceptor">
+                    <property name="properties">
+                        <value>
+                            <!--数据库类型未mysql-->
+                            helperDialect=mysql
+                            <!--                            启用合理化时，如果 pageNum < 1 时，会查询第一页，如果pageNum > pages 会查询最后一页-->
+                            <!--                            禁用合理化时，如果pageNum < 1 或者 pageNum > pages 会返回空数据-->
+                            ressonable=true
+                        </value>
+                    </property>
+                </bean>
+            </array>
+        </property>
+
+        <!--        mybatis 配置文件的位置-->
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+    </bean>
+
+    <bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg index="0" ref="sqlSessionFactory"/>
+    </bean>
+
+    <!--    4.扫描basePackage 下所有以@MyBatisDao 注解的接口-->
+    <bean id="mapperScannerConfigurer"
+          class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+        <property name="basePackage" value="com.ay.dao"/>
+    </bean>
+
+    <!--mybatis 使用事务时要先 申明事务-->
+    <tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true"/>
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--    导入 redis配置-->
+    <import resource="spring-redis.xml"/>
+
+
+    <!--    导入 ActiveMQ 配置-->
+    <import resource="spring-jms.xml"/>
+
+</beans>

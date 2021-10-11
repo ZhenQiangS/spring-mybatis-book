@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.ay.dao.AyUserDemoDao">
+
+    <!--    获取用户-->
+    <select id="findById" parameterType="String" resultType="com.ay.model.AyUserDemo">
+        select * from ay_user where id =#{id}
+    </select>
+    <select id="findByName" parameterType="String" resultType="com.ay.model.AyUserDemo">
+        select*from ay_user where name = #{name}
+    </select>
+    <select id="countByName" parameterType="String" resultType="int">
+        select COUNT(*) from ay_user where name=#{name}
+    </select>
+
+
+    <!--    插入用户-->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" parameterType="com.ay.model.AyUserDemo">
+        insert into ay_user(name,password) value (#{name},#{password});
+    </insert>
+    <insert id="insert2" parameterType="com.ay.model.AyUserDemo">
+        insert into ay_user(id,name,password) value (#{id},#{name},#{password});
+    </insert>
+    <insert id="insert3" parameterType="com.ay.model.AyUserDemo" useGeneratedKeys="true" keyProperty="id">
+        <selectKey keyProperty="id" resultType="int" order="BEFORE">
+            select max(id)+1 as id from ay_user
+        </selectKey>
+        insert into ay_user(id,name,password) value (#{id},#{name},#{password})
+    </insert>
+
+    <!--    更新-->
+    <update id="update" parameterType="com.ay.model.AyUserDemo">
+        update ay_user set name = #{name } where password = #{password} and id =#{id};
+    </update>
+
+    <!--    删除-->
+    <delete id="delete" parameterType="int">
+        delete from ay_user where id = #{id};
+    </delete>
+
+
+    <sql id="userField">
+        a.id as "id",
+        a.name as "name",
+        a.password as "password"
+    </sql>
+    <sql id="userField2">
+        ${prefix}.id as "id",
+        ${prefix}.name as "name",
+        ${prefix}.password as "password"
+    </sql>
+
+    <!--    查找所有用户-->
+    <select id="findAll" resultType="com.ay.model.AyUserDemo">
+        select
+        -- 使用 refid 进行引用
+        <include refid="userField"/>
+        from ay_user as a
+    </select>
+
+    <select id="findAll2" resultType="com.ay.model.AyUserDemo">
+        select
+        <include refid="userField2">
+            <property name="prefix" value="a"/>
+        </include>
+        from ay_user a
+    </select>
+
+    <select id="resultMap" resultMap="userMap">
+        select
+        <include refid="userField2">
+            <property name="prefix" value="a"/>
+        </include>
+        from ay_user a
+    </select>
+
+    <resultMap id="userMap" type="com.ay.model.AyUserDemo">
+        <id property="id" column="id"/>
+        <result property="name" column="password"/>
+        <result property="password" column="name"/>
+    </resultMap>
+    <resultMap id="userMap2" type="com.ay.model.AyUserDemo">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="password" column="password"/>
+    </resultMap>
+
+    <!--使用 if 元素-->
+    <select id="findByNameAndPassword" parameterType="String" resultMap="userMap2">
+        select
+        <include refid="userField"/>
+        from ay_user a
+        WHERE 1=1
+        <if test="name!=null and name!=''">
+            and name=#{name}
+        </if>
+        <if test="password != null and password != ''">
+            and password =#{password}
+        </if>
+    </select>
+
+    <!--注意 parameterType 不一样：按参数的顺序 赋给 SQL 语句值-->
+    <select id="findByNameAndPassword_1" parameterType="java.util.Map" resultMap="userMap2">
+        select * from ay_user a
+        WHERE 1=1
+        <if test="name!=null and name!=''">
+            and name=#{name}
+        </if>
+        <if test="password != null and password != ''">
+            and password =#{password}
+        </if>
+    </select>
+
+    <!--使用 choose when otherwise 元素：有点类似 switch cause default-->
+    <select id="findByNameAndPassword2" parameterType="String" resultMap="userMap2">
+        select
+        <include refid="userField2">
+            <property name="prefix" value="a"/>
+        </include>
+        from ay_user a
+        WHERE 1=1
+        <choose>
+            <when test="name !=null and name !=''">
+                and name =#{name}
+            </when>
+            <when test="password !=null and password != ''">
+                and password=#{password}
+            </when>
+            <otherwise>
+                order by desc
+            </otherwise>
+        </choose>
+    </select>
+
+    <!--使用 trim 元素：去除重复的 AND字符(不区分字母大小写)-->
+    <select id="findByNameAndPassword3" parameterType="String" resultMap="userMap2">
+        select
+        <include refid="userField"/>
+        from au_user
+        /*如果name、password不为空时等价于： where name = #{name} and password =#{password}*/
+        <trim prefix="where" prefixOverrides="AND">
+            <if test="name != null and name != ''">
+                and name = #{name}
+            </if>
+            <if test="password !=null and password !=''">
+                and password =#{password}
+            </if>
+        </trim>
+    </select>
+
+    <!--使用 trim 元素：去除重复的 "," 字符-->
+    <update id="update2" parameterType="com.ay.model.AyUserDemo">
+        UPDATE ay_user
+        /*如果name、password不为空时等价于： set name = #{name} , password =#{password} */
+        <trim prefix="set" prefixOverrides=",">
+            <if test="name != null and name != '' ">
+                name = #{name} ,
+            </if>
+            <if test="password != null and password != '' ">
+                password = #{password} ,
+            </if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <!--where 元素-->
+    <select id="findByName2" parameterType="String" resultType="com.ay.model.AyUserDemo">
+        select * from ay_user
+        <where>
+            /*会自动 去除 and 字符*/
+            <if test="name != null and name != '' ">
+                and name = #{name}
+            </if>
+        </where>
+    </select>
+
+    <!--set 元素-->
+    <update id="update3" parameterType="com.ay.model.AyUserDemo">
+        update au_user
+        <set>
+            /*会自动 去除 "," 字符*/
+            <if test="name !=null and name != '' ">
+                name = #{name},
+            </if>
+            <if test="password != null and password != '' ">
+                password = #{password},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!--foreach 元素-->
+    <select id="findByIds" resultType="com.ay.model.AyUserDemo">
+        select *from ay_user
+        where id in
+        <foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <!--bind 元素-->
+    <select id="findByNameAndPassword4" parameterType="String" resultType="com.ay.model.AyUserDemo">
+        <bind name="name_pattern" value="'%'+name+'%'"/>
+        <bind name="password_pattern" value="'%'+password+'%'"/>
+        select*from ay_user
+        <where>
+            <if test="name != null and name != '' ">
+                and name like#{name_pattern}
+            </if>
+            <if test="password != null and password != '' ">
+                and password like #{password_pattern}
+            </if>
+        </where>
+    </select>
+</mapper>
